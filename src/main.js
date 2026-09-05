@@ -278,9 +278,10 @@ function leave() {
 }
 
 // ---------- Main loop ----------
-let last = performance.now(), acc = 0, endShown = false;
-function frame(now) {
-  requestAnimationFrame(frame);
+// Simulation and networking run from a Web Worker timer so a host keeps ticking even when the
+// tab is in the background (requestAnimationFrame pauses there); rendering stays on rAF.
+let last = performance.now(), acc = 0, endShown = false, latestView = null, lastUpdate = 0;
+function update(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   let view = null;
 
@@ -301,7 +302,6 @@ function frame(now) {
       if (sim.phase === PHASE.MATCH_END && !endShown) { endShown = true; showMatchEnd(view); }
       if (sim.phase !== PHASE.MATCH_END) endShown = false;
     } else if (app.mode === 'host') {
-      // idle lobby: keep the scene alive
       view = hostView(sim);
     }
   } else if (app.mode === 'client') {
@@ -313,8 +313,22 @@ function frame(now) {
     if (view && view.phase === PHASE.MATCH_END && !endShown) { endShown = true; showMatchEnd(view); }
     if (view && view.phase !== PHASE.MATCH_END) endShown = false;
   }
+  if (view) { if (latestView && latestView.events && latestView.events.length && !latestView.rendered) view.events = latestView.events.concat(view.events || []); latestView = view; }
+  else latestView = null;
+  if (!$('hud').hidden && view) updateHud(view);
+}
+let ticker = null;
+try {
+  const src = 'setInterval(() => postMessage(0), 16);';
+  ticker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+  ticker.onmessage = () => update(performance.now());
+} catch (e) { setInterval(() => update(performance.now()), 16); }
 
-  if (view) { renderer.render(view, dt); if (!$('hud').hidden) updateHud(view); }
+let lastRender = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - lastRender) / 1000); lastRender = now;
+  if (latestView) { renderer.render(latestView, dt); latestView.rendered = true; latestView.events = []; }
   else renderer.render({ tilt: { x: Math.sin(now / 1500) * 0.06, z: Math.cos(now / 1900) * 0.06 }, players: [], events: [] }, dt);
 }
 requestAnimationFrame(frame);

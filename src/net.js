@@ -26,7 +26,7 @@ const PEER_OPTS = {
   ] },
 };
 
-function relayClient() { return new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY } }); }
+function relayClient() { return new RealtimeClient(SB_URL.replace(/^http/, 'ws') + '/realtime/v1', { params: { apikey: SB_KEY, eventsPerSecond: 50 } }); }
 
 export class Host {
   constructor(code, handlers) {
