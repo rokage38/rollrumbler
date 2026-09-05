@@ -5,7 +5,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-await page.goto('http://localhost:4173/');
+await page.goto('' + (process.env.URL || 'http://localhost:4173/') + '');
 await page.waitForTimeout(1200);
 await page.screenshot({ path: 'test/01-home.png' });
 await page.fill('#name', 'Ro');
