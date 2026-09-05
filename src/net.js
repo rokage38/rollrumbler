@@ -12,7 +12,9 @@ const PEER_OPTS = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun.cloudflare.com:3478' },
-    // Optional TURN relay for strict mobile networks: set VITE_TURN_URL, VITE_TURN_USER, VITE_TURN_PASS at build time.
+    // Free public relay (Open Relay Project) so phones on strict mobile networks can still connect.
+    { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turn:openrelay.metered.ca:443?transport=tcp', 'turns:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' },
+    // Your own TURN relay, if you set VITE_TURN_URL, VITE_TURN_USER, VITE_TURN_PASS at build time.
     ...(env.VITE_TURN_URL ? [{ urls: env.VITE_TURN_URL.split(','), username: env.VITE_TURN_USER, credential: env.VITE_TURN_PASS }] : []),
   ] },
 };
@@ -45,14 +47,18 @@ export class Host {
 
 export class Client {
   constructor(code, joinMsg, handlers) {
-    this.handlers = handlers; // { onOpen, onMessage, onClose, onError }
+    this.handlers = handlers; // { onOpen, onMessage, onClose, onError, onStatus }
     this.peer = new Peer(PEER_OPTS);
     this.conn = null;
     this.rtt = 0;
+    const status = (t) => handlers.onStatus && handlers.onStatus(t);
+    status('Contacting the room server…');
     this.peer.on('open', () => {
+      status('Found the server. Looking for the host…');
       const conn = this.peer.connect(peerId(code), { reliable: false, serialization: 'json' });
       this.conn = conn;
-      const timer = setTimeout(() => { if (!conn.open) handlers.onError(new Error('Could not reach that room. Check the code and try again.')); }, 12000);
+      const timer = setTimeout(() => { if (!conn.open) handlers.onError(new Error('Could not connect to the host. Check the code, make sure the host is still in the lobby, then try again.')); }, 25000);
+      conn.on('iceStateChanged', (st) => { if (!conn.open) status(st === 'checking' ? 'Host found. Connecting phones…' : st === 'failed' ? 'Direct connection failed, retrying…' : 'Connecting (' + st + ')…'); });
       conn.on('open', () => { clearTimeout(timer); conn.send({ t: 'join', ...joinMsg }); handlers.onOpen && handlers.onOpen(); this._pingLoop(); });
       conn.on('data', (m) => {
         if (m && m.t === 'pong') { this.rtt = performance.now() - m.k; return; }

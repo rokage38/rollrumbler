@@ -165,6 +165,7 @@ function startClient(code) {
   show('lobby'); renderLobby();
   app.net = new Client(code, { name: app.name, char: app.char }, {
     onOpen: () => { $('lobbyHint').textContent = 'Connected. Waiting for the host to start…'; },
+    onStatus: (t) => { $('lobbyHint').textContent = t; },
     onError: (e) => { showErr('lobbyErr', e.message || String(e.type || e)); },
     onClose: () => { if (app.mode === 'client') { showErr('lobbyErr', 'The host left the room.'); show('lobby'); $('lobbyHint').textContent = 'Disconnected.'; } },
     onMessage: (m) => {
