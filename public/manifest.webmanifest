@@ -2,14 +2,14 @@
   "name": "Roll Rumble",
   "short_name": "Roll Rumble",
   "description": "Balance on your ball, bash your friends off the platform, be the last one rolling.",
-  "start_url": "/",
+  "start_url": "./",
   "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#5aa9ff",
   "theme_color": "#5aa9ff",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }
