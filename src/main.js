@@ -103,18 +103,21 @@ function startHost() {
       if (e.type === 'unavailable-id') { app.net.close(); startHost(); return; }
       showErr('lobbyErr', 'Connection problem: ' + (e.type || e.message));
     },
-    onJoin: (conn, id, m) => {
+    onStatus: (t) => { $('lobbyHint').textContent = t; },
+    onJoin: (id, m) => {
       const sim = app.sim;
+      const existing = sim.players.find(q => q.id === id && q.connected);
+      if (existing) { app.net.send(id, { t: 'welcome', id, char: existing.char, code: app.code }); app.net.send(id, lobbyInfo(sim)); if (sim.phase !== PHASE.LOBBY) app.net.send(id, { t: 'start' }); return; }
       const humans = sim.players.filter(p => p.connected && !p.isBot).length;
-      if (humans >= MAX_PLAYERS) { conn.send({ t: 'full' }); return; }
+      if (humans >= MAX_PLAYERS) { app.net.send(id, { t: 'full' }); return; }
       let char = m.char; const taken = new Set(sim.players.filter(p => p.connected).map(p => p.char));
       if (taken.has(char)) char = CHARACTERS.find(c => !taken.has(c.key))?.key || char;
       // make room by dropping a bot if the roster is full
       if (sim.players.filter(p => p.connected).length >= MAX_PLAYERS) { const b = sim.players.find(p => p.isBot && p.connected); if (b) b.connected = false; }
       const p = createPlayer(id, String(m.name || 'Guest').slice(0, 10), char);
       sim.players = sim.players.filter(q => q.id !== id); sim.players.push(p);
-      conn.send({ t: 'welcome', id, char, code: app.code });
-      if (sim.phase !== PHASE.LOBBY) { p.alive = false; p.fallT = 9; conn.send({ t: 'start' }); }
+      app.net.send(id, { t: 'welcome', id, char, code: app.code });
+      if (sim.phase !== PHASE.LOBBY) { p.alive = false; p.fallT = 9; app.net.send(id, { t: 'start' }); }
       arrangeLobby(sim); broadcastLobby(); renderLobby();
     },
     onLeave: (id) => { const p = app.sim?.players.find(q => q.id === id); if (p) { p.connected = false; if (app.sim.phase === PHASE.LOBBY) arrangeLobby(app.sim); broadcastLobby(); renderLobby(); } },
@@ -164,7 +167,7 @@ function startClient(code) {
   $('lobbyHint').textContent = 'Joining room ' + code + '…'; showErr('lobbyErr', '');
   show('lobby'); renderLobby();
   app.net = new Client(code, { name: app.name, char: app.char }, {
-    onOpen: () => { $('lobbyHint').textContent = 'Connected. Waiting for the host to start…'; },
+    onOpen: (kind) => { app.netKind = kind; $('lobbyHint').textContent = (kind === 'relay' ? 'Connected via relay. ' : 'Connected. ') + 'Waiting for the host to start…'; },
     onStatus: (t) => { $('lobbyHint').textContent = t; },
     onError: (e) => { showErr('lobbyErr', e.message || String(e.type || e)); },
     onClose: () => { if (app.mode === 'client') { showErr('lobbyErr', 'The host left the room.'); show('lobby'); $('lobbyHint').textContent = 'Disconnected.'; } },
@@ -253,7 +256,7 @@ function updateHud(v) {
     if (v.matchWinner) msg = `${esc(w.name)}<small>wins the match!</small>`;
   } else if (v.phase === PHASE.PLAY && me && !me.alive) msg = '<small>Knocked off! Watch the rest…</small>';
   if (msg !== app.lastMsgKey) { app.lastMsgKey = msg; $('msg').innerHTML = msg; $('msg').classList.toggle('show', !!msg); }
-  if (app.mode === 'client' && app.net) $('ping').textContent = app.net.rtt ? `${Math.round(app.net.rtt)} ms` : '';
+  if (app.mode === 'client' && app.net) $('ping').textContent = (app.net.rtt ? `${Math.round(app.net.rtt)} ms` : '') + (app.net.kind === 'relay' ? ' relay' : '');
 }
 
 function showMatchEnd(v) {
@@ -294,7 +297,7 @@ function frame(now) {
       while (acc >= TICK) { stepSim(sim, TICK); acc -= TICK; if (sim.events.length) merged.push(...sim.events); }
       if (merged.length) { playEvents(merged); }
       view = hostView(sim); view.events = merged;
-      if (app.mode === 'host' && app.net && now - app.lastSend > 50) { app.lastSend = now; const s = snapshot(sim); s.ev = merged; app.net.broadcast(s); }
+      if (app.mode === 'host' && app.net && now - app.lastSend > (app.net.hasRelayClients() ? 80 : 50)) { app.lastSend = now; const s = snapshot(sim); s.ev = merged; app.net.broadcast(s); }
       if (sim.phase === PHASE.MATCH_END && !endShown) { endShown = true; showMatchEnd(view); }
       if (sim.phase !== PHASE.MATCH_END) endShown = false;
     } else if (app.mode === 'host') {
@@ -303,7 +306,7 @@ function frame(now) {
     }
   } else if (app.mode === 'client') {
     view = clientView(now);
-    if (app.net && now - app.lastSend > 50) {
+    if (app.net && now - app.lastSend > (app.net.kind === 'relay' ? 90 : 50)) {
       app.lastSend = now; const inp = input.read();
       if (inp.dash || inp.x !== app._lx || inp.y !== app._ly || now - (app._lastForce || 0) > 500) { app._lx = inp.x; app._ly = inp.y; app._lastForce = now; app.net.send({ t: 'in', x: +inp.x.toFixed(2), y: +inp.y.toFixed(2), d: inp.dash ? 1 : 0 }); }
     }
