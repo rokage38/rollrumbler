@@ -1,0 +1,22 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/ERR_CONNECTION/.test(m.text())) errs.push(m.text()); });
+await page.goto('http://localhost:4173/'); await page.waitForTimeout(800);
+await page.fill('#name', 'Ro'); await page.click('#btnSolo');
+const t0 = Date.now();
+await page.waitForFunction(() => document.getElementById('end').hidden === false, null, { timeout: 400000 });
+console.log('match finished in', ((Date.now() - t0) / 1000).toFixed(0), 's');
+console.log((await page.innerText('#end')).replace(/\n/g, ' | '));
+await page.screenshot({ path: 'test/20-end.png' });
+await page.click('#btnAgain'); await page.waitForTimeout(1500);
+console.log('again -> hud visible:', await page.evaluate(() => !document.getElementById('hud').hidden));
+await page.click('#leave'); await page.waitForTimeout(300);
+console.log('leave -> home visible:', await page.evaluate(() => !document.getElementById('home').hidden));
+// landscape
+await page.setViewportSize({ width: 844, height: 390 }); await page.waitForTimeout(300);
+await page.click('#btnSolo'); await page.waitForTimeout(4500);
+await page.screenshot({ path: 'test/21-landscape.png' });
+console.log('errors:', errs.length ? errs.join('\n') : 'none');
+await browser.close();
