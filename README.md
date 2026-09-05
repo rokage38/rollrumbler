@@ -17,9 +17,9 @@ npm run dev        # http://localhost:5173, open on your phone via the LAN addre
 npm run build      # production build in dist/
 ```
 
-## Deploy to Vercel
+## Deploy
 
-Push this folder to a GitHub repo and import it in Vercel. It is a plain Vite site: build command `vite build`, output `dist`. Nothing else to configure.
+Pushing to `main` runs the GitHub Actions workflow in `.github/workflows/pages.yml`, which builds the site and publishes it to GitHub Pages at `https://<user>.github.io/<repo>/`. The first run also switches the repo's Pages setting to "GitHub Actions" on its own. It also works on Vercel or Netlify as a plain Vite site (build `vite build`, output `dist`).
 
 ## Optional networking settings
 
