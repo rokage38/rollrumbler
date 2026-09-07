@@ -4,12 +4,13 @@ export class Input {
     this.x = 0; this.y = 0; this.dashQueued = false;
     this.stickId = null; this.origin = null;
     this.stickEl = stickEl; this.knob = stickEl.querySelector('.knob');
-    this.keys = new Set();
+    this.keys = new Set(); this.side = 'any';
     const R = 48;
 
     const start = (e) => {
       for (const t of e.changedTouches) {
         if (this.stickId !== null) continue;
+        if (this.side === 'left' && t.clientX > window.innerWidth * 0.5) continue;
         this.stickId = t.identifier; this.origin = { x: t.clientX, y: t.clientY };
         this.stickEl.style.display = 'block';
         this.stickEl.style.left = t.clientX + 'px'; this.stickEl.style.top = t.clientY + 'px';

@@ -7,176 +7,116 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Roll Rumble" />
   <title>Roll Rumble</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-title" content="Roll Rumble" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root { --ink: #2b1b4d; --pop: #ff4d6d; --pink: #ff5fb8; --sun: #ffd23f; --teal: #1fbfb8; --sky: #4cc9f0; --cream: #fff7ec; }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #ff7aa8; font-family: Fredoka, "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif; color: var(--ink); overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; }
-    #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-    .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); gap: 10px; background: linear-gradient(180deg, rgba(91,63,214,0.55), rgba(255,122,168,0.55) 45%, rgba(255,217,160,0.6)); backdrop-filter: blur(8px); overflow-y: auto; touch-action: pan-y; }
-    .screen.centre { justify-content: center; }
-    .screen[hidden] { display: none; }
-    h1.logo { font-size: clamp(40px, 11vw, 64px); line-height: 0.92; margin: 4px 0 0; text-align: center; color: #fff; text-shadow: 0 4px 0 #c9184a, 0 8px 0 rgba(0,0,0,0.18); letter-spacing: 1px; transform: rotate(-3deg); flex: none; }
-    h1.logo span { display: block; color: var(--sun); text-shadow: 0 4px 0 #cf8a00, 0 8px 0 rgba(0,0,0,0.18); }
-    .tag { color: #fff; font-weight: 600; text-align: center; margin-top: -4px; text-shadow: 0 2px 0 rgba(0,0,0,0.2); flex: none; }
-    .card { background: var(--cream); border-radius: 24px; padding: 16px; width: min(460px, 100%); box-shadow: 0 12px 34px rgba(60,20,90,0.25); display: flex; flex-direction: column; gap: 10px; flex: none; }
-    label.lbl { font-size: 13px; font-weight: 700; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.06em; }
-    input[type=text] { font: inherit; font-size: 20px; font-weight: 600; border: 3px solid #f2d9c9; border-radius: 14px; padding: 11px 14px; width: 100%; outline: none; background: #fff; }
-    input[type=text]:focus { border-color: var(--pink); }
-    input.code { text-transform: uppercase; letter-spacing: 0.35em; text-align: center; font-size: 28px; }
-    .btn { font: inherit; font-size: 19px; font-weight: 700; border: 0; border-radius: 16px; padding: 13px 16px; color: #fff; background: var(--pop); box-shadow: 0 5px 0 #c9184a; cursor: pointer; width: 100%; transition: transform 0.08s; }
-    .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #c9184a; }
-    .btn.blue { background: var(--sky); box-shadow: 0 5px 0 #2f8fb8; } .btn.blue:active { box-shadow: 0 2px 0 #2f8fb8; }
-    .btn.ghost { background: #fff; color: var(--ink); box-shadow: 0 5px 0 #e8d5c4; } .btn.ghost:active { box-shadow: 0 2px 0 #e8d5c4; }
-    .btn.green { background: #3ddc84; box-shadow: 0 5px 0 #23a95f; } .btn.green:active { box-shadow: 0 2px 0 #23a95f; }
-    .btn.small { font-size: 15px; padding: 9px 12px; border-radius: 12px; width: auto; }
-    .btn:disabled { opacity: 0.5; pointer-events: none; }
-    .row { display: flex; gap: 10px; }
-    .row > * { flex: 1; }
-    .err { color: #c9184a; font-weight: 600; text-align: center; min-height: 1.2em; }
-    .bigcode { font-size: 54px; letter-spacing: 0.3em; text-align: center; font-weight: 700; color: var(--ink); background: #fff1b8; border-radius: 16px; padding: 6px 6px 6px 16px; }
-    .plist { display: flex; flex-direction: column; gap: 8px; }
-    .prow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 14px; background: #fff; font-weight: 600; }
-    .prow img { width: 44px; height: 44px; border-radius: 12px; background: #ffe9f3; flex: none; }
-    .prow .bot { font-size: 12px; opacity: 0.55; margin-left: auto; }
-    .hint { font-size: 14px; opacity: 0.75; text-align: center; }
-    .toggle { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
-    .toggle input { width: 22px; height: 22px; }
-
-    /* creator */
-    .pvwrap { position: relative; width: 100%; height: 190px; border-radius: 18px; background: radial-gradient(circle at 50% 70%, #ffe9f3, #ffd6e8 60%, #ffc4dc); overflow: hidden; }
-    #pv { width: 100%; height: 100%; display: block; touch-action: none; }
-    .pvname { position: absolute; left: 12px; top: 10px; font-weight: 700; font-size: 15px; color: var(--ink); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 4px 10px; }
-    .pvhint { position: absolute; right: 12px; bottom: 8px; font-size: 12px; opacity: 0.6; }
-    .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; touch-action: pan-x; }
-    .tabs::-webkit-scrollbar { display: none; }
-    .tab { flex: none; font-weight: 700; font-size: 14px; padding: 8px 13px; border-radius: 999px; background: #fff; color: var(--ink); border: 2px solid transparent; }
-    .tab.on { background: var(--ink); color: #fff; }
-    .opts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 176px; overflow-y: auto; padding: 2px; touch-action: pan-y; }
-    .opt { border-radius: 14px; padding: 10px 6px; text-align: center; font-weight: 700; font-size: 13px; background: #fff; border: 3px solid transparent; cursor: pointer; line-height: 1.15; min-height: 48px; display: flex; align-items: center; justify-content: center; }
-    .opt.on { border-color: var(--ink); }
-    .opt.swatch { min-height: 44px; padding: 0; color: transparent; }
-    .opt.swatch.on { box-shadow: inset 0 0 0 3px #fff; }
-    .creator-actions { display: flex; gap: 8px; }
-    .creator-actions .btn { flex: 1; }
-
-    /* HUD */
-    #hud { position: fixed; inset: 0; pointer-events: none; }
-    #hud[hidden] { display: none; }
-    #top { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-    #scores { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-    .sc { display: flex; align-items: center; gap: 6px; background: rgba(255,247,236,0.9); border-radius: 999px; padding: 4px 10px 4px 5px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-    .sc .dot { width: 20px; height: 20px; border-radius: 50%; }
-    .sc.out { opacity: 0.45; text-decoration: line-through; }
-    .sc.me { outline: 3px solid #ffd23f; }
-    .sc .pips { display: flex; gap: 3px; }
-    .sc .pip { width: 8px; height: 8px; border-radius: 50%; background: #e6d6c8; }
-    .sc .pip.on { background: #ff4d6d; }
-    #timer { font-weight: 700; color: #fff; font-size: 24px; text-shadow: 0 2px 0 rgba(0,0,0,0.25); min-height: 30px; }
-    #timer.sudden { color: #ffd23f; animation: pulse 0.6s infinite alternate; }
-    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.15); } }
-    #msg { position: absolute; top: 22%; left: 0; right: 0; text-align: center; font-size: clamp(40px, 12vw, 80px); font-weight: 700; color: #fff; text-shadow: 0 5px 0 #c9184a, 0 10px 20px rgba(0,0,0,0.25); transition: transform 0.15s, opacity 0.2s; opacity: 0; transform: scale(0.6); }
-    #msg.show { opacity: 1; transform: scale(1); }
-    #msg small { display: block; font-size: 0.4em; text-shadow: 0 3px 0 rgba(0,0,0,0.25); }
-    #stick { position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.5); display: none; pointer-events: none; }
-    #stick .knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,0.85); transform: translate(-50%,-50%); box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
-    #dash { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom)); width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe27a, #ff5fb8); box-shadow: 0 6px 0 #c9188a, 0 10px 20px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); pointer-events: auto; overflow: hidden; }
-    #dash.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #c9188a; }
-    #dash .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(40,20,60,0.45); height: 0%; }
-    #dash span { position: relative; }
-    #layer { position: fixed; inset: 0; }
-    #layer[hidden] { display: none; }
-    #ping { position: absolute; bottom: max(8px, env(safe-area-inset-bottom)); left: 14px; font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 600; }
-    .pill { position: absolute; pointer-events: auto; background: rgba(255,247,236,0.8); border: 0; border-radius: 999px; padding: 6px 12px; font: inherit; font-weight: 700; font-size: 13px; color: var(--ink); }
-    #leave { bottom: max(30px, env(safe-area-inset-bottom)); left: max(14px, env(safe-area-inset-left)); }
-    #mute { bottom: max(30px, env(safe-area-inset-bottom)); left: calc(max(14px, env(safe-area-inset-left)) + 78px); }
-    #muteHome { position: fixed; top: max(10px, env(safe-area-inset-top)); right: 12px; z-index: 5; }
-    .winner { font-size: 30px; text-align: center; font-weight: 700; }
-    .winnerpic { width: 120px; height: 120px; border-radius: 24px; background: #ffe9f3; display: block; margin: 0 auto; }
-    .podium { display: flex; flex-direction: column; gap: 6px; }
-    #install { display: none; width: min(460px, 100%); background: #2b1b4d; color: #fff; border-radius: 18px; padding: 12px 14px; font-size: 14px; line-height: 1.35; box-shadow: 0 8px 24px rgba(40,10,70,0.3); flex: none; position: relative; }
-    #install.show { display: block; }
-    #install b { color: #ffd23f; }
-    #install .x { position: absolute; top: 6px; right: 10px; background: none; border: 0; color: #fff; font-size: 20px; opacity: 0.7; padding: 4px; }
-    #install .btn { margin-top: 8px; font-size: 16px; padding: 10px 14px; }
-    #install .share { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; margin: 0 2px; }
-  </style>
+  <link rel="stylesheet" href="/src/ui/style.css" />
 </head>
 <body>
   <canvas id="c"></canvas>
   <div id="layer" hidden></div>
   <div id="stick"><div class="knob"></div></div>
 
+  <!-- HUD -->
   <div id="hud" hidden>
     <div id="top"><div id="scores"></div><div id="timer"></div></div>
     <button id="leave" class="pill">Leave</button>
-    <button id="mute" class="pill">Sound on</button>
     <div id="msg"></div>
     <div id="ping"></div>
     <div id="dash"><div class="cd"></div><span>DASH</span></div>
   </div>
 
-  <div id="home" class="screen">
-    <button id="muteHome" class="pill">Sound on</button>
-    <h1 class="logo">ROLL<span>RUMBLE</span></h1>
-    <div class="tag">Build your rumbler. Bash your mates. Last one rolling wins.</div>
+  <!-- Title -->
+  <section id="title" class="screen title">
+    <div class="titlewrap">
+      <div class="logo"><span class="l1">ROLL</span><span class="l2">RUMBLE</span></div>
+      <div class="tag">Build your rumbler. Bash your mates.<br>Last one rolling wins.</div>
+    </div>
+    <div class="titlebtns">
+      <button class="btn big" id="tPlay">Play</button>
+      <div class="row">
+        <button class="btn pink" id="tWardrobe">Wardrobe</button>
+        <button class="btn ghost" id="tSettings">Settings</button>
+      </div>
+      <div class="me" id="titleMe"><img id="titleThumb" alt="" /><span id="titleName">Rumbler</span></div>
+    </div>
     <div id="install">
       <button class="x" id="installClose" aria-label="Close">×</button>
-      <div id="installAndroid" hidden><b>Add Roll Rumble to your home screen</b> for fullscreen play with its own icon.<button class="btn" id="installBtn">Install app</button></div>
-      <div id="installIos" hidden><b>Add Roll Rumble to your home screen:</b> tap the Share button <svg class="share" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M7 8l5-5 5 5"/><path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/></svg> at the bottom of Safari, then <b>Add to Home Screen</b>.</div>
+      <div id="installAndroid" hidden><b>Add Roll Rumble to your home screen</b> for fullscreen play with its own icon.<button class="btn small" id="installBtn">Install app</button></div>
+      <div id="installIos" hidden><b>Add Roll Rumble to your home screen:</b> tap Share <svg class="share" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M7 8l5-5 5 5"/><path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/></svg> at the bottom of Safari, then <b>Add to Home Screen</b>.</div>
     </div>
-    <div class="card">
-      <div class="pvwrap"><canvas id="pv"></canvas><div class="pvname" id="pvname">Rumbler</div><div class="pvhint">drag to spin</div></div>
-      <input type="text" id="name" maxlength="10" placeholder="Your name" autocomplete="off" />
-      <div class="tabs" id="tabs"></div>
-      <div class="opts" id="opts"></div>
-      <div class="creator-actions"><button class="btn ghost small" id="btnRandom">Surprise me</button></div>
-      <button class="btn green" id="btnSolo">Play vs bots</button>
-      <div class="row">
-        <button class="btn" id="btnHost">Create room</button>
-        <button class="btn blue" id="btnJoinOpen">Join room</button>
-      </div>
-      <div id="joinBox" hidden>
-        <input type="text" class="code" id="code" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" />
-        <button class="btn blue" id="btnJoin" style="margin-top:10px">Join</button>
-      </div>
-      <div class="err" id="homeErr"></div>
-    </div>
-  </div>
+  </section>
 
-  <div id="lobby" class="screen centre" hidden>
+  <!-- Play -->
+  <section id="play" class="screen" hidden>
+    <header class="bar"><button class="back" id="pBack">‹</button><h2>Play</h2><span></span></header>
+    <div class="card">
+      <label class="lbl">Your name</label>
+      <input type="text" id="name" maxlength="10" placeholder="Your name" autocomplete="off" />
+      <button class="mode green" id="btnSolo"><b>Play vs bots</b><small>Solo practice, works offline</small></button>
+      <button class="mode" id="btnHost"><b>Create room</b><small>Get a code, invite up to five friends</small></button>
+      <div class="mode blue static"><b>Join room</b><small>Enter the 4-letter code from your host</small>
+        <div class="joinrow"><input type="text" class="code" id="code" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" /><button class="btn blue small" id="btnJoin">Join</button></div>
+      </div>
+      <div class="err" id="playErr"></div>
+    </div>
+  </section>
+
+  <!-- Wardrobe -->
+  <section id="wardrobe" class="screen wardrobe" hidden>
+    <header class="bar"><button class="back" id="wBack">‹</button><h2>Wardrobe</h2><button class="pill" id="btnRandom">Surprise me</button></header>
+    <div class="pvwrap"><canvas id="pv"></canvas><div class="pvname" id="pvname">Rumbler</div><div class="pvhint">drag to spin</div></div>
+    <div class="tabs" id="tabs"></div>
+    <div class="opts" id="opts"></div>
+    <button class="btn big" id="wDone">Done</button>
+  </section>
+
+  <!-- Settings -->
+  <section id="settings" class="screen" hidden>
+    <header class="bar"><button class="back" id="sBack">‹</button><h2>Settings</h2><span></span></header>
+    <div class="card">
+      <div class="setting"><span>Sound effects</span><button class="toggle" id="setSfx">On</button></div>
+      <div class="setting"><span>Music</span><button class="toggle" id="setMusic">On</button></div>
+      <div class="setting"><span>Graphics</span><div class="seg" id="setQuality"><button data-q="auto">Auto</button><button data-q="0">Low</button><button data-q="1">Med</button><button data-q="2">High</button></div></div>
+      <div class="setting"><span>Joystick side</span><div class="seg" id="setStick"><button data-s="any">Anywhere</button><button data-s="left">Left</button></div></div>
+      <div class="hint" id="setInstall"></div>
+      <div class="hint small">Roll Rumble · a game by Ro · made with three.js</div>
+    </div>
+  </section>
+
+  <!-- Lobby -->
+  <section id="lobby" class="screen centre" hidden>
     <div class="card">
       <div id="lobbyHostBits">
         <label class="lbl">Room code, tell your friends</label>
         <div class="bigcode" id="lobbyCode">----</div>
-        <button class="btn ghost" id="btnShare" style="margin-top:10px">Share join link</button>
+        <button class="btn ghost" id="btnShare">Share join link</button>
       </div>
       <div class="hint" id="lobbyHint">Connecting…</div>
       <label class="lbl">Players</label>
-      <div class="plist" id="plist"></div>
-      <div class="toggle" id="botToggleRow"><span>Fill empty spots with bots</span><input type="checkbox" id="botToggle" checked /></div>
-      <button class="btn green" id="btnStart">Start match</button>
+      <div class="pgrid" id="plist"></div>
+      <div class="setting" id="botToggleRow"><span>Fill empty spots with bots</span><input type="checkbox" id="botToggle" checked /></div>
+      <button class="btn green big" id="btnStart">Start match</button>
       <button class="btn ghost" id="btnLobbyLeave">Leave</button>
       <div class="err" id="lobbyErr"></div>
     </div>
-  </div>
+  </section>
 
-  <div id="end" class="screen centre" hidden>
-    <div class="card">
-      <img class="winnerpic" id="winnerPic" alt="" />
+  <!-- Results -->
+  <section id="end" class="screen centre" hidden>
+    <div class="card results">
+      <div class="winnerwrap"><img class="winnerpic" id="winnerPic" alt="" /><div class="crownbadge">★</div></div>
       <div class="winner" id="winnerText">Someone wins!</div>
       <div class="podium" id="podium"></div>
-      <button class="btn green" id="btnAgain">Play again</button>
+      <button class="btn green big" id="btnAgain">Play again</button>
       <div class="hint" id="againHint" hidden>Waiting for the host to start again…</div>
       <button class="btn ghost" id="btnEndLeave">Back to menu</button>
     </div>
-  </div>
+  </section>
 
   <script type="module" src="/src/main.js"></script>
 </body>

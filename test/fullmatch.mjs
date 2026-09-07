@@ -1,22 +1,23 @@
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/ERR_CONNECTION/.test(m.text())) errs.push(m.text()); });
-await page.goto('http://localhost:4173/'); await page.waitForTimeout(800);
-await page.fill('#name', 'Ro'); await page.click('#btnSolo');
+await page.goto('http://localhost:4173/', { waitUntil: 'domcontentloaded', timeout: 90000 }); await page.waitForTimeout(3000);
+await page.evaluate(() => { const r = RR.renderer, o = r.render.bind(r); let n = 0; r.render = (v, dt) => { if (++n % 30 === 0) o(v, dt * 30); }; });
+const c = (s) => page.click(s, { noWaitAfter: true });
+await c('#tPlay'); await page.fill('#name', 'Ro'); await c('#btnSolo');
 const t0 = Date.now();
-await page.waitForFunction(() => document.getElementById('end').hidden === false, null, { timeout: 400000 });
+for (let i = 0; i < 100; i++) { await page.waitForTimeout(5000); const st = await page.evaluate(() => { const s = RR.app.sim; return s ? [s.phase, s.round, Math.round(s.time), s.players.map(p => p.score).join('')] : null; }); if (i % 4 === 0) console.log('progress', st); if (await page.evaluate(() => document.getElementById('end').hidden === false)) break; }
 console.log('match finished in', ((Date.now() - t0) / 1000).toFixed(0), 's');
 console.log((await page.innerText('#end')).replace(/\n/g, ' | '));
-await page.screenshot({ path: 'test/20-end.png' });
-await page.click('#btnAgain'); await page.waitForTimeout(1500);
+await page.waitForTimeout(1500); await page.screenshot({ path: 'test/20-end.png' });
+await c('#btnAgain'); await page.waitForTimeout(1500);
 console.log('again -> hud visible:', await page.evaluate(() => !document.getElementById('hud').hidden));
-await page.click('#leave'); await page.waitForTimeout(300);
-console.log('leave -> home visible:', await page.evaluate(() => !document.getElementById('home').hidden));
-// landscape
+await c('#leave'); await page.waitForTimeout(600);
+console.log('leave -> title visible:', await page.evaluate(() => !document.getElementById('title').hidden));
 await page.setViewportSize({ width: 844, height: 390 }); await page.waitForTimeout(300);
-await page.click('#btnSolo'); await page.waitForTimeout(4500);
+await c('#tPlay'); await c('#btnSolo'); await page.waitForTimeout(6000);
 await page.screenshot({ path: 'test/21-landscape.png' });
 console.log('errors:', errs.length ? errs.join('\n') : 'none');
 await browser.close();

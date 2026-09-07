@@ -1,4 +1,4 @@
-import { createSim, createPlayer, startMatch, stepSim, botThink, PHASE, TICK } from '../src/sim.js';
+import { createSim, createPlayer, startMatch, stepSim, botThink, PHASE, TICK } from '../src/core/sim.js';
 const lens = []; let bumps = 0;
 for (let m = 0; m < 20; m++) {
   const sim = createSim();

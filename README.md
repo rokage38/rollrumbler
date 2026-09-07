@@ -27,19 +27,29 @@ See `.env.example`. Out of the box the game uses the public PeerJS server plus G
 
 ## Tuning the feel
 
-Everything that shapes the gameplay lives at the top of `src/sim.js`: acceleration, friction, slide strength (tilt and dome), bump force, dash speed and cooldown, round length before sudden death, and wins needed. `test/simstats.mjs` runs bot-only matches headlessly and prints median round length, handy after changing numbers.
+Everything that shapes the gameplay lives at the top of `src/core/sim.js`: acceleration, friction, slide strength (tilt and dome), bump force, dash speed and cooldown, round length before sudden death, and wins needed. `test/simstats.mjs` runs bot-only matches headlessly and prints median round length, handy after changing numbers.
 
 ## Project layout
 
 ```
-index.html          screens, HUD and styles
-src/main.js         app flow: home, lobby, host loop, client loop
-src/sim.js          the game rules and physics (host-authoritative), bot AI, network snapshots
-src/render.js       Three.js scene: dome platform, characters, effects, camera
-src/net.js          PeerJS host and client wrappers
-src/input.js        floating joystick, dash button, keyboard
-src/audio.js        synthesised sound effects
-src/characters.js   the eight original characters
-public/             manifest, icons, service worker
-test/               Playwright smoke tests and the headless balance script
+index.html              the screens: title, play, wardrobe, settings, lobby, results, in-game HUD
+src/main.js             app flow and orchestration: screens, solo/host/client loops, HUD
+src/core/sim.js         game rules and physics (host-authoritative), bot AI, snapshots
+src/core/prediction.js  client-side prediction of the local player
+src/core/net.js         host and client transports (PeerJS WebRTC raced against a Supabase relay)
+src/looks/catalog.js    every wardrobe option: bodies, colours, patterns, outfits, faces, hats, extras, balls
+src/looks/textures.js   procedural canvas textures (skins, faces, ball designs)
+src/looks/builder.js    builds and animates a rumbler rig from a look
+src/render/renderer.js  quality levels, camera, environment lighting
+src/render/world.js     the carnival island: sky, stage, pool, bleachers, tents, ferris wheel
+src/render/actors.js    one animated rumbler per player, kept in sync with the view
+src/render/effects.js   bursts, confetti, camera shake
+src/render/preview.js   wardrobe turntable and thumbnails
+src/ui/screens.js       screen switching
+src/ui/wardrobe.js      wardrobe tabs and options
+src/ui/input.js         floating joystick, dash button, keyboard
+src/ui/style.css        all styling
+src/audio.js            synthesised sound effects and music
+public/                 manifest, icons, service worker
+test/                   Playwright smoke tests and the headless balance script
 ```

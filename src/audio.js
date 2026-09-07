@@ -1,21 +1,22 @@
 // Synthesised sound: effects, crowd, and a small generative music loop. No files to load.
 export class Sfx {
   constructor() {
-    this.ctx = null; this.muted = false; this._musicMode = null; this._musicTimer = null;
-    try { this.muted = localStorage.getItem('rr-mute') === '1'; } catch {}
+    this.ctx = null; this.muted = false; this.musicOn = true; this._musicMode = null; this._musicTimer = null;
+    try { this.muted = localStorage.getItem('rr-mute') === '1'; this.musicOn = localStorage.getItem('rr-music') !== '0'; } catch {}
   }
   unlock() {
     if (!this.ctx) {
       try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
-      this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 1; this.master.connect(this.ctx.destination);
-      this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = 0.9; this.sfxBus.connect(this.master);
-      this.musicBus = this.ctx.createGain(); this.musicBus.gain.value = 0.28; this.musicBus.connect(this.master);
+      this.master = this.ctx.createGain(); this.master.gain.value = 1; this.master.connect(this.ctx.destination);
+      this.sfxBus = this.ctx.createGain(); this.sfxBus.gain.value = this.muted ? 0 : 0.9; this.sfxBus.connect(this.master);
+      this.musicBus = this.ctx.createGain(); this.musicBus.gain.value = this.musicOn ? 0.28 : 0; this.musicBus.connect(this.master);
       const comp = this.ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 4; this.master.disconnect(); this.master.connect(comp); comp.connect(this.ctx.destination);
       if (this._musicMode) this._startMusic(this._musicMode);
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
   }
-  setMuted(m) { this.muted = m; try { localStorage.setItem('rr-mute', m ? '1' : '0'); } catch {} if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.02); }
+  setMuted(m) { this.muted = m; try { localStorage.setItem('rr-mute', m ? '1' : '0'); } catch {} if (this.sfxBus) this.sfxBus.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.02); }
+  setMusic(on) { this.musicOn = on; try { localStorage.setItem('rr-music', on ? '1' : '0'); } catch {} if (this.musicBus) this.musicBus.gain.setTargetAtTime(on ? 0.28 : 0, this.ctx.currentTime, 0.05); }
   _osc(type, f0, f1, dur, vol = 0.3, delay = 0, bus = null) {
     if (!this.ctx) return null;
     const c = this.ctx, t = c.currentTime + delay;

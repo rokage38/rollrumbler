@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/ERR_CONNECTION/.test(m.text())) errs.push(m.text()); });
+await page.goto(process.env.URL || 'http://localhost:4173/', { waitUntil: 'domcontentloaded' }); await page.waitForTimeout(3000);
+await page.screenshot({ path: 'test/50-title.png' });
+await page.click('#tPlay'); await page.waitForTimeout(600); await page.fill('#name', 'Ro');
+await page.click('#btnHost'); await page.waitForTimeout(2500); await page.screenshot({ path: 'test/54-lobby.png' });
+await page.click('#btnStart'); await page.waitForTimeout(5000); await page.screenshot({ path: 'test/55-game.png' });
+await page.waitForTimeout(10000); await page.screenshot({ path: 'test/56-game2.png' });
+console.log('hud:', await page.evaluate(() => document.getElementById('scores').innerText.replace(/\n/g, ' ') + ' | ' + document.getElementById('timer').innerText));
+console.log('errors:', errs.length ? errs.join('\n') : 'none');
+await browser.close();
