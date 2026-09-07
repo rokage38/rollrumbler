@@ -75,7 +75,37 @@ function renderOpts() {
   };
   window.addEventListener('touchstart', () => sfx.unlock(), { once: true, passive: true });
   window.addEventListener('mousedown', () => sfx.unlock(), { once: true });
+  initInstallHint();
 })();
+
+// ---------- "Add to home screen" hint ----------
+function initInstallHint() {
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+  let dismissed = false; try { dismissed = localStorage.getItem('rr-install-dismissed') === '1'; } catch {}
+  if (standalone || dismissed) return;
+  const box = $('install');
+  const ua = navigator.userAgent;
+  const isIos = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|Chrome/.test(ua);
+  $('installClose').onclick = () => { box.classList.remove('show'); try { localStorage.setItem('rr-install-dismissed', '1'); } catch {} };
+  if (isIos) {
+    if (isSafari) { $('installIos').hidden = false; box.classList.add('show'); }
+    return; // other iOS browsers cannot install; say nothing
+  }
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferred = e;
+    $('installAndroid').hidden = false; box.classList.add('show');
+  });
+  $('installBtn').onclick = async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    const r = await deferred.userChoice; deferred = null;
+    box.classList.remove('show');
+    if (r && r.outcome === 'accepted') { try { localStorage.setItem('rr-install-dismissed', '1'); } catch {} }
+  };
+  window.addEventListener('appinstalled', () => { box.classList.remove('show'); try { localStorage.setItem('rr-install-dismissed', '1'); } catch {} });
+}
 
 function readName() {
   sfx.unlock();

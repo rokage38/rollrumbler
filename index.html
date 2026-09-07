@@ -10,7 +10,8 @@
   <title>Roll Rumble</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="Roll Rumble" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -99,6 +100,12 @@
     .winner { font-size: 30px; text-align: center; font-weight: 700; }
     .winnerpic { width: 120px; height: 120px; border-radius: 24px; background: #ffe9f3; display: block; margin: 0 auto; }
     .podium { display: flex; flex-direction: column; gap: 6px; }
+    #install { display: none; width: min(460px, 100%); background: #2b1b4d; color: #fff; border-radius: 18px; padding: 12px 14px; font-size: 14px; line-height: 1.35; box-shadow: 0 8px 24px rgba(40,10,70,0.3); flex: none; position: relative; }
+    #install.show { display: block; }
+    #install b { color: #ffd23f; }
+    #install .x { position: absolute; top: 6px; right: 10px; background: none; border: 0; color: #fff; font-size: 20px; opacity: 0.7; padding: 4px; }
+    #install .btn { margin-top: 8px; font-size: 16px; padding: 10px 14px; }
+    #install .share { display: inline-block; width: 16px; height: 16px; vertical-align: -3px; margin: 0 2px; }
   </style>
 </head>
 <body>
@@ -119,6 +126,11 @@
     <button id="muteHome" class="pill">Sound on</button>
     <h1 class="logo">ROLL<span>RUMBLE</span></h1>
     <div class="tag">Build your rumbler. Bash your mates. Last one rolling wins.</div>
+    <div id="install">
+      <button class="x" id="installClose" aria-label="Close">×</button>
+      <div id="installAndroid" hidden><b>Add Roll Rumble to your home screen</b> for fullscreen play with its own icon.<button class="btn" id="installBtn">Install app</button></div>
+      <div id="installIos" hidden><b>Add Roll Rumble to your home screen:</b> tap the Share button <svg class="share" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3M7 8l5-5 5 5"/><path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/></svg> at the bottom of Safari, then <b>Add to Home Screen</b>.</div>
+    </div>
     <div class="card">
       <div class="pvwrap"><canvas id="pv"></canvas><div class="pvname" id="pvname">Rumbler</div><div class="pvhint">drag to spin</div></div>
       <input type="text" id="name" maxlength="10" placeholder="Your name" autocomplete="off" />

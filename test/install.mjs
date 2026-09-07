@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader'] });
+const ios = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: ios });
+const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(e.message));
+await page.goto('http://localhost:4173/'); await page.waitForTimeout(800);
+console.log('ios hint shown:', await page.evaluate(() => document.getElementById('install').classList.contains('show') && !document.getElementById('installIos').hidden));
+await page.screenshot({ path: 'test/40-install.png', clip: { x: 0, y: 0, width: 390, height: 420 } });
+await page.click('#installClose'); await page.reload(); await page.waitForTimeout(600);
+console.log('after dismiss shown:', await page.evaluate(() => document.getElementById('install').classList.contains('show')));
+console.log('errors:', errs.join('\n') || 'none');
+await browser.close();
