@@ -1,6 +1,6 @@
 // The place: a floating circus island in a sunset sky, with the tilting drum stage at its heart.
 import * as THREE from 'three';
-import { ARENA_R, DOME_H } from '../core/sim.js';
+import { ARENA_R, DOME_H, planeY } from '../core/sim.js';
 import { canvasTex } from '../looks/textures.js';
 
 export const CONFETTI = ['#ff4d6d', '#ffd23f', '#4cc9f0', '#3ddc84', '#ff5fb8', '#8338ec', '#ffffff'];
@@ -167,4 +167,4 @@ export class World {
   }
   setTilt(tilt) { this.platform.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(tilt.x, 1, tilt.z).normalize()); }
 }
-export function planeY(tilt, x, z) { const r2 = (x * x + z * z) / (ARENA_R * ARENA_R); return -(tilt.x * x + tilt.z * z) + DOME_H * Math.max(0, 1 - r2); }
+export { planeY };

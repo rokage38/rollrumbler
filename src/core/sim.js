@@ -14,9 +14,15 @@ const FRICTION = 2.4;        // per second, velocity damping
 const SLIDE_G = 20;          // slide acceleration per unit of tilt
 export const DOME = 0.5;     // outward slide per unit radius (the platform is a shallow dome)
 export const DOME_H = 1.4;   // visual height of the dome at the centre
-const DASH_SPEED = 18;
-const DASH_COOLDOWN = 2.4;
-const DASH_TIME = 0.22;
+const DASH_SPEED = 16;
+const DASH_TIME = 0.2;
+export const DASH_CHARGES = 3;      // the dash meter holds three mini dashes
+export const DASH_RECHARGE = 2.2;   // seconds to refill one charge
+const DASH_GAP = 0.1;               // minimum time between two chained dashes
+const GRAVITY = 28;
+const AIR_TIME = 1.0;               // how long you can hang off the edge before you are gone
+const AIR_HOP = 3.4;                // upward kick of a dash while airborne
+const EDGE_R = ARENA_R + BALL_R * 0.35;
 const BUMP_RESTITUTION = 1.3;
 const BUMP_MIN_PUSH = 8;
 
@@ -26,10 +32,14 @@ export function createPlayer(id, name, look, isBot = false) {
     x: 0, z: 0, vx: 0, vz: 0,
     alive: true,
     fallT: -1,           // <0 = on platform, otherwise seconds since fell
-    dashCd: 0,           // cooldown remaining
+    dashes: DASH_CHARGES, // dash meter (charges, fractional while refilling)
     dashT: 0,            // dash active time remaining
+    dashGap: 0,          // time until the next chained dash may start
+    air: false,          // airborne past the edge (can still dash back in)
+    airT: 0,
+    h: 0, vy: 0,         // world height and vertical speed while airborne or falling
     fx: 0, fz: 1,        // facing
-    input: { x: 0, y: 0, dash: false },
+    input: { x: 0, y: 0, dash: 0 }, // dash counts queued taps
     score: 0,
     stunned: 0,
     connected: true,
@@ -76,8 +86,10 @@ export function startRound(sim) {
     p.vx = 0; p.vz = 0;
     p.alive = true;
     p.fallT = -1;
-    p.dashCd = 0; p.dashT = 0;
+    p.dashes = DASH_CHARGES; p.dashT = 0; p.dashGap = 0;
+    p.air = false; p.airT = 0; p.h = 0; p.vy = 0;
     p.stunned = 0;
+    p.input.dash = 0;
     p.fx = -Math.cos(a); p.fz = -Math.sin(a);
   });
 }
@@ -102,6 +114,7 @@ export function stepSim(sim, dt) {
   const P = sim.players.filter(p => p.connected);
 
   if (sim.phase === PHASE.COUNTDOWN) {
+    for (const p of P) p.input.dash = 0; // taps during the countdown must not fire at GO
     sim.phaseT -= dt;
     if (sim.phaseT <= 0) { sim.phase = PHASE.PLAY; sim.time = 0; }
     return;
@@ -140,45 +153,55 @@ export function stepSim(sim, dt) {
 // Move one player for dt using its input, the platform tilt and the dome. Shared by the host
 // simulation and by the client-side prediction of the local player. Returns a dash event or null.
 export function movePlayer(p, tilt, dt, controls) {
-  p.dashCd = Math.max(0, p.dashCd - dt);
   p.stunned = Math.max(0, p.stunned - dt);
+  p.dashGap = Math.max(0, p.dashGap - dt);
+  if (p.dashT <= 0) p.dashes = Math.min(DASH_CHARGES, p.dashes + dt / DASH_RECHARGE);
   let ax = 0, az = 0, dashed = false;
-  if (controls && p.stunned <= 0) {
+  if (controls) {
     const ix = p.input.x, iy = p.input.y;
     const mag = Math.hypot(ix, iy);
     if (mag > 0.08) {
-      const m = Math.min(1, mag);
-      ax += (ix / mag) * m * ACCEL;
-      az += (iy / mag) * m * ACCEL;
       p.fx = ix / mag; p.fz = iy / mag;
+      if (!p.air && p.stunned <= 0) { const m = Math.min(1, mag); ax += p.fx * m * ACCEL; az += p.fz * m * ACCEL; }
     }
-    if (p.input.dash && p.dashCd <= 0) {
-      p.dashCd = DASH_COOLDOWN;
-      p.dashT = DASH_TIME;
-      p.vx = p.fx * DASH_SPEED; p.vz = p.fz * DASH_SPEED;
-      dashed = true;
+    // Dash: one charge per tap, chainable up to three, in the stick direction (or facing).
+    // Allowed while stunned only when airborne, so a knocked-off player can still try to get back.
+    if (p.input.dash > 0) {
+      if (p.dashes >= 1 && p.dashGap <= 0 && (p.air || p.stunned <= 0)) {
+        p.dashes -= 1; p.dashT = DASH_TIME; p.dashGap = DASH_GAP; p.input.dash -= 1;
+        p.vx = p.fx * DASH_SPEED; p.vz = p.fz * DASH_SPEED;
+        if (p.air) p.vy = AIR_HOP;
+        dashed = true;
+      } else if (p.dashGap <= 0) p.input.dash = 0; // nothing to spend: drop the tap rather than firing it later
     }
-    p.input.dash = false;
-  }
-  ax += tilt.x * SLIDE_G + p.x * DOME;
-  az += tilt.z * SLIDE_G + p.z * DOME;
-  p.vx += ax * dt; p.vz += az * dt;
-  if (p.dashT > 0) {
-    p.dashT -= dt;
+  } else p.input.dash = 0;
+  if (p.air) {
+    p.airT += dt; p.dashT -= dt;
+    p.vy -= GRAVITY * dt; p.h += p.vy * dt;
   } else {
-    const damp = Math.exp(-FRICTION * dt);
-    p.vx *= damp; p.vz *= damp;
-    const sp = Math.hypot(p.vx, p.vz);
-    if (sp > MAX_SPEED) { p.vx *= MAX_SPEED / sp; p.vz *= MAX_SPEED / sp; }
+    ax += tilt.x * SLIDE_G + p.x * DOME;
+    az += tilt.z * SLIDE_G + p.z * DOME;
+    p.vx += ax * dt; p.vz += az * dt;
+    if (p.dashT > 0) {
+      p.dashT -= dt;
+    } else {
+      const damp = Math.exp(-FRICTION * dt);
+      p.vx *= damp; p.vz *= damp;
+      const sp = Math.hypot(p.vx, p.vz);
+      if (sp > MAX_SPEED) { p.vx *= MAX_SPEED / sp; p.vz *= MAX_SPEED / sp; }
+    }
   }
   p.x += p.vx * dt; p.z += p.vz * dt;
   return dashed;
 }
 
+// Height of the platform surface at (x, z): tilt plane plus the shallow dome.
+export function planeY(tilt, x, z) { const r2 = (x * x + z * z) / (ARENA_R * ARENA_R); return -(tilt.x * x + tilt.z * z) + DOME_H * Math.max(0, 1 - r2); }
+
 function stepPhysics(sim, P, dt, controls) {
   for (const p of P) {
     if (!p.alive) {
-      p.fallT += dt;
+      p.fallT += dt; p.vy -= GRAVITY * dt; p.h += p.vy * dt;
       p.x += p.vx * dt; p.z += p.vz * dt;
       continue;
     }
@@ -187,9 +210,9 @@ function stepPhysics(sim, P, dt, controls) {
 
   // collisions between balls
   for (let i = 0; i < P.length; i++) {
-    const a = P[i]; if (!a.alive) continue;
+    const a = P[i]; if (!a.alive || a.air) continue;
     for (let j = i + 1; j < P.length; j++) {
-      const b = P[j]; if (!b.alive) continue;
+      const b = P[j]; if (!b.alive || b.air) continue;
       let dx = b.x - a.x, dz = b.z - a.z;
       let d = Math.hypot(dx, dz);
       const minD = BALL_R * 2;
@@ -217,20 +240,33 @@ function stepPhysics(sim, P, dt, controls) {
     }
   }
 
-  // fall off
+  // edge, air and falling. Past the rim you are airborne for a moment: a dash back towards the
+  // stage can save you, as long as you have not dropped below the (possibly tilted-up) edge.
   for (const p of P) {
     if (!p.alive) continue;
-    if (Math.hypot(p.x, p.z) > ARENA_R + BALL_R * 0.35) {
-      p.alive = false;
-      p.fallT = 0;
-      sim.events.push({ t: 'fall', id: p.id });
+    const r = Math.hypot(p.x, p.z);
+    if (!p.air) {
+      if (r > EDGE_R) { p.air = true; p.airT = 0; p.h = planeY(sim.tilt, p.x, p.z); p.vy = 0; p.stunned = 0; sim.events.push({ t: 'edge', id: p.id }); }
+    } else {
+      const surf = planeY(sim.tilt, p.x, p.z);
+      if (r <= EDGE_R - 0.2 && p.h >= surf - 0.3 && p.vy <= 2) {
+        p.air = false; p.h = 0; p.vy = 0; p.airT = 0;
+        sim.events.push({ t: 'land', id: p.id, x: p.x, z: p.z });
+      } else if (p.airT > AIR_TIME || p.h < surf - 2.4) {
+        p.alive = false; p.fallT = 0; p.air = false;
+        sim.events.push({ t: 'fall', id: p.id });
+      }
     }
   }
 }
 
 // ---- Bot AI ----
 export function botThink(sim, bot, P) {
-  if (sim.phase !== PHASE.PLAY || !bot.alive) { bot.input.x = 0; bot.input.y = 0; return; }
+  if (sim.phase !== PHASE.PLAY || !bot.alive) { bot.input.x = 0; bot.input.y = 0; bot.input.dash = 0; return; }
+  if (bot.air) { // knocked off: dash straight back at the stage if the meter allows
+    const r0 = Math.hypot(bot.x, bot.z) || 1; bot.input.x = -bot.x / r0; bot.input.y = -bot.z / r0;
+    bot.input.dash = bot.dashes >= 1 && bot.airT > 0.12 ? 1 : 0; return;
+  }
   bot._brain = bot._brain || { noiseA: Math.random() * 6.28, dashWait: 0, skill: 0.55 + Math.random() * 0.4 };
   const br = bot._brain;
   const t = sim.time;
@@ -266,7 +302,7 @@ export function botThink(sim, bot, P) {
     const aggression = 1.4 * br.skill * (tr > r ? 1.4 : 0.8);
     dx += (gx / gd) * aggression; dz += (gz / gd) * aggression;
     const align = (tx / d) * outX + (tz / d) * outZ;
-    if (t > 1.5 && d < 3.6 && align > 0.3 && bot.dashCd <= 0 && Math.random() < 0.7 * br.skill) wantDash = true;
+    if (t > 1.5 && d < 3.6 && align > 0.3 && bot.dashes >= (edgeUrgency > 0.4 ? 2 : 1) && Math.random() < 0.7 * br.skill) wantDash = true;
   }
 
   // wobble
@@ -275,7 +311,7 @@ export function botThink(sim, bot, P) {
   dz += Math.sin(br.noiseA * 1.3 + t * 0.8) * 0.25;
   const m = Math.hypot(dx, dz) || 1;
   bot.input.x = dx / m; bot.input.y = dz / m;
-  bot.input.dash = wantDash;
+  bot.input.dash = wantDash ? 1 : 0;
 }
 
 // ---- Snapshot (compact) for the network ----
@@ -292,7 +328,7 @@ export function snapshot(sim) {
     mw: sim.matchWinner,
     p: sim.players.filter(p => p.connected).map(p => [
       p.id, +p.x.toFixed(2), +p.z.toFixed(2), +p.vx.toFixed(2), +p.vz.toFixed(2),
-      p.alive ? 1 : 0, +p.fallT.toFixed(2), +p.dashCd.toFixed(2), p.score, +p.fx.toFixed(2), +p.fz.toFixed(2), p.dashT > 0 ? 1 : 0,
+      p.alive ? 1 : 0, +p.fallT.toFixed(2), +p.dashes.toFixed(2), p.score, +p.fx.toFixed(2), +p.fz.toFixed(2), p.dashT > 0 ? 1 : 0, +p.h.toFixed(2), p.air ? 1 : 0,
     ]),
     ev: sim.events.slice(),
   };

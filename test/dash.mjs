@@ -1,0 +1,20 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/ERR_CONNECTION/.test(m.text())) errs.push(m.text()); });
+await page.goto('http://localhost:4173/', { waitUntil: 'domcontentloaded', timeout: 90000 }); await page.waitForTimeout(3000);
+await page.evaluate(() => { const r = RR.renderer, o = r.render.bind(r); let n = 0; r.render = (v, dt) => { if (++n % 6 === 0) o(v, dt * 6); }; });
+const c = (s) => page.click(s, { noWaitAfter: true });
+await c('#tPlay'); await page.fill('#name', 'Ro'); await c('#btnSolo');
+// tap dash during the countdown: must NOT fire at GO
+await page.waitForTimeout(1500); await page.tap('#dash');
+await page.waitForFunction(() => RR.app.sim && RR.app.sim.phase === 'play', null, { timeout: 60000 });
+const me = () => page.evaluate(() => { const p = RR.app.sim.players.find(p => p.id === 'host'); return { dashes: +p.dashes.toFixed(2), dashT: +p.dashT.toFixed(2), air: p.air, alive: p.alive, x: +p.x.toFixed(1), z: +p.z.toFixed(1), v: +Math.hypot(p.vx, p.vz).toFixed(1) }; });
+await page.waitForTimeout(400); console.log('just after GO', await me());
+await page.tap('#dash'); await page.waitForTimeout(150); await page.tap('#dash'); await page.waitForTimeout(150); await page.tap('#dash'); await page.waitForTimeout(150); await page.tap('#dash');
+await page.waitForTimeout(300); console.log('after 4 taps', await me());
+await page.screenshot({ path: 'test/70-meter.png', clip: { x: 250, y: 700, width: 140, height: 144 } });
+await page.waitForTimeout(3000); console.log('3 s later', await me(), 'meter ui', await page.evaluate(() => [...document.querySelectorAll('#dash .meter i')].map(i => i.style.getPropertyValue('--f'))));
+console.log('errors:', errs.length ? errs.join('\n') : 'none');
+await browser.close();

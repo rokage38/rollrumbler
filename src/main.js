@@ -145,7 +145,7 @@ function startHost() {
       arrangeLobby(sim); broadcastLobby(); renderLobby(); sfx.pop();
     },
     onLeave: (id) => { const p = app.sim?.players.find(q => q.id === id); if (p) { p.connected = false; if (app.sim.phase === PHASE.LOBBY) arrangeLobby(app.sim); broadcastLobby(); renderLobby(); } },
-    onInput: (id, m) => { const p = app.sim?.players.find(q => q.id === id); if (p) { p.input.x = m.x; p.input.y = m.y; if (m.d) p.input.dash = true; } },
+    onInput: (id, m) => { const p = app.sim?.players.find(q => q.id === id); if (p) { p.input.x = +m.x || 0; p.input.y = +m.y || 0; if (m.d && app.sim.phase === PHASE.PLAY) p.input.dash = Math.min(3, (p.input.dash || 0) + (+m.d || 0)); } },
   });
 }
 function arrangeLobby(sim) { const P = sim.players.filter(p => p.connected); P.forEach((p, i) => { const a = (i / P.length) * Math.PI * 2 + Math.PI / 2; p.x = Math.cos(a) * 4.5; p.z = Math.sin(a) * 4.5; p.fx = -Math.cos(a); p.fz = -Math.sin(a); }); }
@@ -207,9 +207,9 @@ function clientView(now) {
   const bmap = new Map(b.p.map(q => [q[0], q])), meta = new Map(app.lobby.map(q => [q.id, q]));
   const players = a.p.map(q => {
     const r = bmap.get(q[0]) || q, mt = meta.get(q[0]);
-    const pl = { id: q[0], name: mt?.name, look: mt?.look || defaultLook(), x: lerp(q[1], r[1]), z: lerp(q[2], r[2]), vx: r[3], vz: r[4], alive: !!r[5], fallT: r[6], dashCd: r[7], score: r[8], fx: r[9], fz: r[10], dashing: !!r[11] };
+    const pl = { id: q[0], name: mt?.name, look: mt?.look || defaultLook(), x: lerp(q[1], r[1]), z: lerp(q[2], r[2]), vx: r[3], vz: r[4], alive: !!r[5], fallT: r[6], dashes: r[7], score: r[8], fx: r[9], fz: r[10], dashing: !!r[11], h: lerp(q[12] || 0, r[12] || 0), air: !!r[13] };
     const pr = pred.state;
-    if (pl.id === app.myId && pr && pl.alive) { pl.x = pr.x; pl.z = pr.z; pl.vx = pr.vx; pl.vz = pr.vz; pl.fx = pr.fx; pl.fz = pr.fz; pl.dashing = pr.dashT > 0; pl.dashCd = pr.dashCd; }
+    if (pl.id === app.myId && pr && pl.alive && !pl.air) { pl.x = pr.x; pl.z = pr.z; pl.vx = pr.vx; pl.vz = pr.vz; pl.fx = pr.fx; pl.fz = pr.fz; pl.dashing = pr.dashT > 0; pl.dashes = pr.dashes; }
     return pl;
   });
   const latest = S[S.length - 1], events = app.pendingEvents; app.pendingEvents = [];
@@ -218,7 +218,7 @@ function clientView(now) {
 function hostView(sim) {
   return {
     tilt: sim.tilt,
-    players: sim.players.filter(p => p.connected).map(p => ({ id: p.id, name: p.name, look: p.look, x: p.x, z: p.z, vx: p.vx, vz: p.vz, alive: p.alive, fallT: p.fallT, dashCd: p.dashCd, score: p.score, fx: p.fx, fz: p.fz, dashing: p.dashT > 0 })),
+    players: sim.players.filter(p => p.connected).map(p => ({ id: p.id, name: p.name, look: p.look, x: p.x, z: p.z, vx: p.vx, vz: p.vz, alive: p.alive, fallT: p.fallT, dashes: p.dashes, score: p.score, fx: p.fx, fz: p.fz, dashing: p.dashT > 0, h: p.h, air: p.air })),
     events: sim.events, phase: sim.phase, time: sim.time, phaseT: sim.phaseT, round: sim.round, roundWinner: sim.lastRoundWinner, matchWinner: sim.matchWinner,
   };
 }
@@ -227,6 +227,8 @@ function playEvents(events) {
     if (e.t === 'bump') sfx.bump(e.s);
     else if (e.t === 'dash') sfx.dash();
     else if (e.t === 'fall') { sfx.fall(); sfx.crowd('ooh'); }
+    else if (e.t === 'edge') sfx.pop();
+    else if (e.t === 'land') { sfx.bump(0.4); sfx.crowd('cheer'); }
     else if (e.t === 'roundEnd') { if (e.winner === app.myId) sfx.win(); else sfx.lose(); sfx.crowd('cheer'); }
   }
 }
@@ -239,7 +241,9 @@ function updateHud(v) {
   const tEl = $('timer');
   if (v.phase === PHASE.PLAY) { const left = Math.max(0, ROUND_TIME - v.time); tEl.textContent = left > 0 ? Math.ceil(left) : 'SUDDEN DEATH'; tEl.classList.toggle('sudden', left <= 0); if (left <= 0 && !app._sudden) { app._sudden = true; sfx.sudden(); } if (left > 0) app._sudden = false; }
   else tEl.textContent = v.phase === PHASE.COUNTDOWN ? `Round ${v.round}` : '';
-  $('dash').querySelector('.cd').style.height = me && me.alive ? `${Math.min(100, (me.dashCd / 2.4) * 100)}%` : '0%';
+  const meter = me && me.alive ? me.dashes : 0, segs = $('dash').querySelectorAll('.meter i');
+  segs.forEach((el, i) => { const f = Math.max(0, Math.min(1, meter - i)); el.style.setProperty('--f', f.toFixed(2)); el.classList.toggle('full', f >= 1); });
+  $('dash').classList.toggle('empty', meter < 1);
   let msg = '';
   if (v.phase === PHASE.COUNTDOWN) { const n = Math.ceil(v.phaseT - 0.2); msg = n > 0 ? String(n) : 'GO!'; if (n !== app.countdownShown) { app.countdownShown = n; sfx.beep(n <= 0); } }
   else if (v.phase === PHASE.ROUND_END) { const w = v.players.find(p => p.id === v.roundWinner); msg = w ? `${esc(w.name || 'Rumbler')}<small>wins the round</small>` : 'Draw!'; if (v.matchWinner && w) msg = `${esc(w.name)}<small>wins the match!</small>`; }
@@ -274,7 +278,7 @@ function update(now) {
     const sim = app.sim;
     if (sim.phase !== PHASE.LOBBY) {
       const me = sim.players.find(p => p.id === 'host'), inp = input.read();
-      if (me) { me.input.x = inp.x; me.input.y = inp.y; if (inp.dash) me.input.dash = true; }
+      if (me) { me.input.x = inp.x; me.input.y = inp.y; if (inp.dash && sim.phase === PHASE.PLAY) me.input.dash += inp.dash; }
       if (now - app.lastBotThink > 100) { app.lastBotThink = now; const P = sim.players.filter(p => p.connected); for (const b of P) if (b.isBot) botThink(sim, b, P); }
       acc += dt; const merged = [];
       while (acc >= TICK) { stepSim(sim, TICK); acc -= TICK; if (sim.events.length) merged.push(...sim.events); }
@@ -285,12 +289,12 @@ function update(now) {
       if (sim.phase !== PHASE.MATCH_END) endShown = false;
     } else if (app.mode === 'host') view = hostView(sim);
   } else if (app.mode === 'client') {
-    const inp = input.read(); if (inp.dash) app._dashQueued = true;
+    const inp = input.read(); const ph = app.snaps.length ? app.snaps[app.snaps.length - 1].ph : null; if (inp.dash && ph === PHASE.PLAY) app._dashQueued = (app._dashQueued || 0) + inp.dash; else if (ph !== PHASE.PLAY) app._dashQueued = 0;
     pred.step(app.snaps, app.myId, inp, dt, app.net ? app.net.rtt : 0, now);
     view = clientView(now);
     if (app.net && now - app.lastSend > (app.net.kind === 'relay' ? 80 : 50)) {
-      app.lastSend = now; const d = app._dashQueued; app._dashQueued = false;
-      if (d || inp.x !== app._lx || inp.y !== app._ly || now - (app._lastForce || 0) > 500) { app._lx = inp.x; app._ly = inp.y; app._lastForce = now; app.net.send({ t: 'in', x: +inp.x.toFixed(2), y: +inp.y.toFixed(2), d: d ? 1 : 0 }); }
+      app.lastSend = now; const d = app._dashQueued || 0; app._dashQueued = 0;
+      if (d || inp.x !== app._lx || inp.y !== app._ly || now - (app._lastForce || 0) > 500) { app._lx = inp.x; app._ly = inp.y; app._lastForce = now; app.net.send({ t: 'in', x: +inp.x.toFixed(2), y: +inp.y.toFixed(2), d }); }
     }
     if (view && view.phase === PHASE.MATCH_END && !endShown) { endShown = true; showMatchEnd(view); }
     if (view && view.phase !== PHASE.MATCH_END) endShown = false;

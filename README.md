@@ -7,7 +7,7 @@ A phone-first multiplayer party game. Everyone balances on a ball on a tilting d
 - **Web app, no install.** Runs in the phone browser and can be added to the home screen (PWA). Portrait and landscape both work.
 - **Online rooms with a code.** One phone hosts and gets a four-letter code (or a share link). Friends join from their own phones. The host phone runs the simulation and streams positions to everyone at 20 updates a second; the other phones only send their joystick. Connections are direct phone-to-phone over WebRTC using the free public PeerJS signalling server, so there is no game server to run.
 - **Bots.** "Play vs bots" is fully offline. In rooms, empty spots are filled with bots (toggle in the lobby).
-- **Controls.** Touch anywhere to get a floating joystick. Big DASH button for a burst with a 2.4 second cooldown. Arrow keys / WASD and space work on a laptop for testing.
+- **Controls.** Touch anywhere to get a floating joystick. The DASH button is a three-charge meter: tap once for a short burst in the stick direction, or tap up to three times for a chain. Each charge takes about two seconds to come back. Get knocked past the edge and you are airborne for a moment: a dash back towards the stage can save you, as long as the platform has not tilted up and away from you. Arrow keys / WASD and space work on a laptop for testing.
 
 ## Run locally
 
@@ -27,7 +27,7 @@ See `.env.example`. Out of the box the game uses the public PeerJS server plus G
 
 ## Tuning the feel
 
-Everything that shapes the gameplay lives at the top of `src/core/sim.js`: acceleration, friction, slide strength (tilt and dome), bump force, dash speed and cooldown, round length before sudden death, and wins needed. `test/simstats.mjs` runs bot-only matches headlessly and prints median round length, handy after changing numbers.
+Everything that shapes the gameplay lives at the top of `src/core/sim.js`: acceleration, friction, slide strength (tilt and dome), bump force, the dash meter (three chainable charges, refill time, air hop), how long you can hang past the edge before you are gone, round length before sudden death, and wins needed. `test/simstats.mjs` runs bot-only matches headlessly and prints median round length, handy after changing numbers.
 
 ## Project layout
 

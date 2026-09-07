@@ -130,8 +130,13 @@ input.code { text-transform: uppercase; letter-spacing: 0.3em; text-align: cente
 #stick .knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,0.85); transform: translate(-50%,-50%); box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
 #dash { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(26px, var(--sab)); width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe27a, #ff5fb8); box-shadow: 0 6px 0 #c9188a, 0 10px 20px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); pointer-events: auto; overflow: hidden; }
 #dash.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #c9188a; }
-#dash .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(40,20,60,0.45); height: 0%; }
+#dash.empty { filter: saturate(0.35) brightness(0.85); }
 #dash span { position: relative; }
+#dash .meter { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 4px; }
+#dash .meter i { flex: 1; height: 7px; border-radius: 4px; background: rgba(40,20,60,0.35); overflow: hidden; position: relative; }
+#dash .meter i::after { content: ''; position: absolute; inset: 0; background: #fff; transform-origin: left; transform: scaleX(var(--f, 1)); transition: transform 80ms linear; }
+#dash .meter i.full::after { background: #fff7b0; box-shadow: 0 0 6px #fff; }
+#dash { flex-direction: column; }
 #layer { position: fixed; inset: 0; }
 #layer[hidden] { display: none; }
 #ping { position: absolute; bottom: max(8px, var(--sab)); left: 14px; font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 600; }

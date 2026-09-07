@@ -1,7 +1,7 @@
 // Floating touch joystick (anywhere on screen) + dash button + keyboard fallback.
 export class Input {
   constructor(layer, stickEl, dashEl) {
-    this.x = 0; this.y = 0; this.dashQueued = false;
+    this.x = 0; this.y = 0; this.dashQueued = 0;
     this.stickId = null; this.origin = null;
     this.stickEl = stickEl; this.knob = stickEl.querySelector('.knob');
     this.keys = new Set(); this.side = 'any';
@@ -54,11 +54,11 @@ export class Input {
     });
     window.addEventListener('mouseup', () => { if (!mouseDown) return; mouseDown = false; this.x = 0; this.y = 0; this.stickEl.style.display = 'none'; });
 
-    const dash = (e) => { this.dashQueued = true; e.preventDefault(); e.stopPropagation(); dashEl.classList.add('pressed'); setTimeout(() => dashEl.classList.remove('pressed'), 120); };
+    const dash = (e) => { this.dashQueued += 1; e.preventDefault(); e.stopPropagation(); dashEl.classList.add('pressed'); setTimeout(() => dashEl.classList.remove('pressed'), 120); };
     dashEl.addEventListener('touchstart', dash, { passive: false });
     dashEl.addEventListener('mousedown', dash);
 
-    window.addEventListener('keydown', (e) => { this.keys.add(e.code); if (e.code === 'Space') this.dashQueued = true; });
+    window.addEventListener('keydown', (e) => { this.keys.add(e.code); if (e.code === 'Space' && !e.repeat) this.dashQueued += 1; });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
   }
 
@@ -69,7 +69,7 @@ export class Input {
       x = (k.has('ArrowRight') || k.has('KeyD') ? 1 : 0) - (k.has('ArrowLeft') || k.has('KeyA') ? 1 : 0);
       y = (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0) - (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0);
     }
-    const dash = this.dashQueued; this.dashQueued = false;
+    const dash = this.dashQueued; this.dashQueued = 0;
     // small dead zone, then a slight curve so fine control is easier near the centre
     const m = Math.hypot(x, y);
     if (m > 0) { const dz = 0.1; const mm = m < dz ? 0 : Math.min(1, (m - dz) / (1 - dz)); const curved = Math.pow(mm, 1.3); x = x / m * curved; y = y / m * curved; }
