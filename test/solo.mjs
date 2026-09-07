@@ -9,7 +9,7 @@ await page.goto('' + (process.env.URL || 'http://localhost:4173/') + '');
 await page.waitForTimeout(1200);
 await page.screenshot({ path: 'test/01-home.png' });
 await page.fill('#name', 'Ro');
-await page.click('.chip[data-key="momo"]');
+
 await page.click('#btnSolo');
 await page.waitForTimeout(1500);
 await page.screenshot({ path: 'test/02-countdown.png' });

@@ -5,7 +5,7 @@ export class Input {
     this.stickId = null; this.origin = null;
     this.stickEl = stickEl; this.knob = stickEl.querySelector('.knob');
     this.keys = new Set();
-    const R = 60;
+    const R = 48;
 
     const start = (e) => {
       for (const t of e.changedTouches) {
@@ -69,6 +69,9 @@ export class Input {
       y = (k.has('ArrowDown') || k.has('KeyS') ? 1 : 0) - (k.has('ArrowUp') || k.has('KeyW') ? 1 : 0);
     }
     const dash = this.dashQueued; this.dashQueued = false;
+    // small dead zone, then a slight curve so fine control is easier near the centre
+    const m = Math.hypot(x, y);
+    if (m > 0) { const dz = 0.1; const mm = m < dz ? 0 : Math.min(1, (m - dz) / (1 - dz)); const curved = Math.pow(mm, 1.3); x = x / m * curved; y = y / m * curved; }
     return { x, y, dash };
   }
 }

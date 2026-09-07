@@ -20,9 +20,9 @@ const DASH_TIME = 0.22;
 const BUMP_RESTITUTION = 1.3;
 const BUMP_MIN_PUSH = 8;
 
-export function createPlayer(id, name, char, isBot = false) {
+export function createPlayer(id, name, look, isBot = false) {
   return {
-    id, name, char, isBot,
+    id, name, look, isBot,
     x: 0, z: 0, vx: 0, vz: 0,
     alive: true,
     fallT: -1,           // <0 = on platform, otherwise seconds since fell
@@ -137,6 +137,44 @@ export function stepSim(sim, dt) {
   }
 }
 
+// Move one player for dt using its input, the platform tilt and the dome. Shared by the host
+// simulation and by the client-side prediction of the local player. Returns a dash event or null.
+export function movePlayer(p, tilt, dt, controls) {
+  p.dashCd = Math.max(0, p.dashCd - dt);
+  p.stunned = Math.max(0, p.stunned - dt);
+  let ax = 0, az = 0, dashed = false;
+  if (controls && p.stunned <= 0) {
+    const ix = p.input.x, iy = p.input.y;
+    const mag = Math.hypot(ix, iy);
+    if (mag > 0.08) {
+      const m = Math.min(1, mag);
+      ax += (ix / mag) * m * ACCEL;
+      az += (iy / mag) * m * ACCEL;
+      p.fx = ix / mag; p.fz = iy / mag;
+    }
+    if (p.input.dash && p.dashCd <= 0) {
+      p.dashCd = DASH_COOLDOWN;
+      p.dashT = DASH_TIME;
+      p.vx = p.fx * DASH_SPEED; p.vz = p.fz * DASH_SPEED;
+      dashed = true;
+    }
+    p.input.dash = false;
+  }
+  ax += tilt.x * SLIDE_G + p.x * DOME;
+  az += tilt.z * SLIDE_G + p.z * DOME;
+  p.vx += ax * dt; p.vz += az * dt;
+  if (p.dashT > 0) {
+    p.dashT -= dt;
+  } else {
+    const damp = Math.exp(-FRICTION * dt);
+    p.vx *= damp; p.vz *= damp;
+    const sp = Math.hypot(p.vx, p.vz);
+    if (sp > MAX_SPEED) { p.vx *= MAX_SPEED / sp; p.vz *= MAX_SPEED / sp; }
+  }
+  p.x += p.vx * dt; p.z += p.vz * dt;
+  return dashed;
+}
+
 function stepPhysics(sim, P, dt, controls) {
   for (const p of P) {
     if (!p.alive) {
@@ -144,41 +182,7 @@ function stepPhysics(sim, P, dt, controls) {
       p.x += p.vx * dt; p.z += p.vz * dt;
       continue;
     }
-    p.dashCd = Math.max(0, p.dashCd - dt);
-    p.stunned = Math.max(0, p.stunned - dt);
-
-    let ax = 0, az = 0;
-    if (controls && p.stunned <= 0) {
-      const ix = p.input.x, iy = p.input.y;
-      const mag = Math.hypot(ix, iy);
-      if (mag > 0.08) {
-        const m = Math.min(1, mag);
-        ax += (ix / mag) * m * ACCEL;
-        az += (iy / mag) * m * ACCEL;
-        p.fx = ix / mag; p.fz = iy / mag;
-      }
-      if (p.input.dash && p.dashCd <= 0) {
-        p.dashCd = DASH_COOLDOWN;
-        p.dashT = DASH_TIME;
-        p.vx = p.fx * DASH_SPEED; p.vz = p.fz * DASH_SPEED;
-        sim.events.push({ t: 'dash', id: p.id });
-      }
-      p.input.dash = false;
-    }
-    // slide downhill (tilt) and outward (dome)
-    ax += sim.tilt.x * SLIDE_G + p.x * DOME;
-    az += sim.tilt.z * SLIDE_G + p.z * DOME;
-
-    p.vx += ax * dt; p.vz += az * dt;
-    if (p.dashT > 0) {
-      p.dashT -= dt;
-    } else {
-      const damp = Math.exp(-FRICTION * dt);
-      p.vx *= damp; p.vz *= damp;
-      const sp = Math.hypot(p.vx, p.vz);
-      if (sp > MAX_SPEED) { p.vx *= MAX_SPEED / sp; p.vz *= MAX_SPEED / sp; }
-    }
-    p.x += p.vx * dt; p.z += p.vz * dt;
+    if (movePlayer(p, sim.tilt, dt, controls)) sim.events.push({ t: 'dash', id: p.id });
   }
 
   // collisions between balls
@@ -295,5 +299,5 @@ export function snapshot(sim) {
 }
 
 export function lobbyInfo(sim) {
-  return { t: 'lobby', p: sim.players.filter(p => p.connected).map(p => ({ id: p.id, name: p.name, char: p.char, bot: p.isBot })) };
+  return { t: 'lobby', p: sim.players.filter(p => p.connected).map(p => ({ id: p.id, name: p.name, look: p.look, bot: p.isBot })) };
 }

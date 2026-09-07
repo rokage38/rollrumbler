@@ -5,16 +5,16 @@ const mk = async (label) => {
   const page = await ctx.newPage();
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'log') console.log(`[${label}] ${m.text()}`); });
   page.on('pageerror', e => console.log(`[${label}] PAGEERROR ${e.message}`));
-  await page.goto('http://localhost:4173/');
+  await page.goto(process.env.URL || 'http://localhost:4173/');
   await page.waitForTimeout(800);
   return { ctx, page };
 };
 const host = await mk('host'), guest = await mk('guest');
-await host.page.fill('#name', 'Ro'); await host.page.click('.chip[data-key="momo"]'); await host.page.click('#btnHost');
+await host.page.fill('#name', 'Ro'); await host.page.click('#btnHost');
 await host.page.waitForFunction(() => document.getElementById('lobbyHint').textContent.startsWith('Room open'), null, { timeout: 20000 });
 const code = await host.page.textContent('#lobbyCode');
 console.log('room code', code);
-await guest.page.fill('#name', 'Mahmoud'); await guest.page.click('.chip[data-key="momo"]'); // same char on purpose
+await guest.page.fill('#name', 'Mahmoud'); await guest.page.click('.tab[data-k="hat"]'); await guest.page.click('.opt[data-v="unicorn"]'); 
 await guest.page.click('#btnJoinOpen'); await guest.page.fill('#code', code); await guest.page.click('#btnJoin');
 await guest.page.waitForFunction(() => document.getElementById('lobbyHint').textContent.startsWith('Connected'), null, { timeout: 25000 });
 await host.page.waitForTimeout(1000);
