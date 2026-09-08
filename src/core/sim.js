@@ -2,7 +2,7 @@
 
 export const ARENA_R = 10;      // platform radius
 export const BALL_R = 0.85;     // ball radius (collision radius)
-export const ROUND_TIME = 75;   // seconds before sudden death
+export const ROUND_TIME = 60;   // seconds before sudden death
 export const WINS_NEEDED = 3;
 export const TICK = 1 / 60;
 
@@ -20,11 +20,14 @@ export const DASH_CHARGES = 3;      // the dash meter holds three mini dashes
 export const DASH_RECHARGE = 2.2;   // seconds to refill one charge
 const DASH_GAP = 0.1;               // minimum time between two chained dashes
 const GRAVITY = 28;
-const AIR_TIME = 1.0;               // how long you can hang off the edge before you are gone
-const AIR_HOP = 3.4;                // upward kick of a dash while airborne
+const GRAVITY_AIR = 10;            // floaty hang past the edge, so there is time to react
+const AIR_TIME = 1.1;               // how long you can hang off the edge before you are gone
+const AIR_HOP = 5;                  // upward kick of a dash while airborne
 const EDGE_R = ARENA_R + BALL_R * 0.35;
 const BUMP_RESTITUTION = 1.3;
 const BUMP_MIN_PUSH = 8;
+const CLASH_STUN = 0.45;   // both dashing into each other: both stunned
+const CLASH_PUSH = 12;
 
 export function createPlayer(id, name, look, isBot = false) {
   return {
@@ -170,14 +173,14 @@ export function movePlayer(p, tilt, dt, controls) {
       if (p.dashes >= 1 && p.dashGap <= 0 && (p.air || p.stunned <= 0)) {
         p.dashes -= 1; p.dashT = DASH_TIME; p.dashGap = DASH_GAP; p.input.dash -= 1;
         p.vx = p.fx * DASH_SPEED; p.vz = p.fz * DASH_SPEED;
-        if (p.air) p.vy = AIR_HOP;
+        if (p.air) p.vy = Math.max(p.vy, -2) + AIR_HOP;
         dashed = true;
       } else if (p.dashGap <= 0) p.input.dash = 0; // nothing to spend: drop the tap rather than firing it later
     }
   } else p.input.dash = 0;
   if (p.air) {
     p.airT += dt; p.dashT -= dt;
-    p.vy -= GRAVITY * dt; p.h += p.vy * dt;
+    p.vy -= GRAVITY_AIR * dt; p.h += p.vy * dt;
   } else {
     ax += tilt.x * SLIDE_G + p.x * DOME;
     az += tilt.z * SLIDE_G + p.z * DOME;
@@ -232,6 +235,13 @@ function stepPhysics(sim, P, dt, controls) {
           const strength = Math.min(1, -vn / 14);
           const st = 0.08 + strength * 0.22;
           a.stunned = Math.max(a.stunned, st); b.stunned = Math.max(b.stunned, st);
+          if (a.dashT > 0 && b.dashT > 0) {
+            // head-on clash: both dashes cancel and both are stunned, thrown apart evenly
+            a.dashT = 0; b.dashT = 0; a.stunned = CLASH_STUN; b.stunned = CLASH_STUN;
+            a.vx = -dx * CLASH_PUSH; a.vz = -dz * CLASH_PUSH; b.vx = dx * CLASH_PUSH; b.vz = dz * CLASH_PUSH;
+            sim.events.push({ t: 'clash', a: a.id, b: b.id, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 });
+            continue;
+          }
           if (a.dashT > 0 && b.dashT <= 0) b.stunned = 0.4;
           if (b.dashT > 0 && a.dashT <= 0) a.stunned = 0.4;
           sim.events.push({ t: 'bump', a: a.id, b: b.id, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, s: strength });
@@ -249,10 +259,10 @@ function stepPhysics(sim, P, dt, controls) {
       if (r > EDGE_R) { p.air = true; p.airT = 0; p.h = planeY(sim.tilt, p.x, p.z); p.vy = 0; p.stunned = 0; sim.events.push({ t: 'edge', id: p.id }); }
     } else {
       const surf = planeY(sim.tilt, p.x, p.z);
-      if (r <= EDGE_R - 0.2 && p.h >= surf - 0.3 && p.vy <= 2) {
+      if (r <= EDGE_R - 0.2 && p.h >= surf - 0.7 && p.vy <= 3) {
         p.air = false; p.h = 0; p.vy = 0; p.airT = 0;
         sim.events.push({ t: 'land', id: p.id, x: p.x, z: p.z });
-      } else if (p.airT > AIR_TIME || p.h < surf - 2.4) {
+      } else if (p.airT > AIR_TIME || p.h < surf - 2.2) {
         p.alive = false; p.fallT = 0; p.air = false;
         sim.events.push({ t: 'fall', id: p.id });
       }
@@ -263,10 +273,14 @@ function stepPhysics(sim, P, dt, controls) {
 // ---- Bot AI ----
 export function botThink(sim, bot, P) {
   if (sim.phase !== PHASE.PLAY || !bot.alive) { bot.input.x = 0; bot.input.y = 0; bot.input.dash = 0; return; }
-  if (bot.air) { // knocked off: dash straight back at the stage if the meter allows
+  bot._brain = bot._brain || { noiseA: Math.random() * 6.28, dashWait: 0, skill: 0.55 + Math.random() * 0.4 };
+  if (bot.air) { // knocked off: sometimes react in time and dash straight back at the stage
+    const br = bot._brain;
+    if (!br.inAir) { br.inAir = true; br.recover = Math.random() < 0.25 + 0.5 * br.skill; br.reactAt = 0.15 + (1 - br.skill) * 0.5; }
     const r0 = Math.hypot(bot.x, bot.z) || 1; bot.input.x = -bot.x / r0; bot.input.y = -bot.z / r0;
-    bot.input.dash = bot.dashes >= 1 && bot.airT > 0.12 ? 1 : 0; return;
+    bot.input.dash = br.recover && bot.dashes >= 1 && bot.airT > br.reactAt ? 1 : 0; return;
   }
+  bot._brain.inAir = false;
   bot._brain = bot._brain || { noiseA: Math.random() * 6.28, dashWait: 0, skill: 0.55 + Math.random() * 0.4 };
   const br = bot._brain;
   const t = sim.time;
@@ -302,7 +316,11 @@ export function botThink(sim, bot, P) {
     const aggression = 1.4 * br.skill * (tr > r ? 1.4 : 0.8);
     dx += (gx / gd) * aggression; dz += (gz / gd) * aggression;
     const align = (tx / d) * outX + (tz / d) * outZ;
-    if (t > 1.5 && d < 3.6 && align > 0.3 && bot.dashes >= (edgeUrgency > 0.4 ? 2 : 1) && Math.random() < 0.7 * br.skill) wantDash = true;
+    if (t > 1.5 && d < 3.6 && align > 0.3 && bot.dashes >= (edgeUrgency > 0.4 ? 2 : 1) && (target.dashT <= 0 || Math.random() < 0.25) && Math.random() < 0.7 * br.skill) {
+      // a target squared up to us with charges left is likely to dash too, and a clash helps nobody
+      const facing = (target.fx * -tx + target.fz * -tz) / d;
+      if (!(facing > 0.6 && target.dashes >= 1 && Math.random() < 0.7 * br.skill)) wantDash = true;
+    }
   }
 
   // wobble

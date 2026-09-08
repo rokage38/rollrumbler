@@ -8,8 +8,8 @@ for (let m = 0; m < 20; m++) {
   while (sim.phase !== PHASE.MATCH_END && guard++ < 60 * 600) {
     if (guard % 6 === 0) { const P = sim.players; for (const b of P) botThink(sim, b, P); }
     const ph = sim.phase; stepSim(sim, TICK);
-    for (const e of sim.events) { if (e.t === 'edge') edge++; else if (e.t === 'land') land++; else if (e.t === 'fall') fall++; else if (e.t === 'dash') dash++; }
+    for (const e of sim.events) { if (e.t === 'edge') edge++; else if (e.t === 'land') land++; else if (e.t === 'fall') fall++; else if (e.t === 'dash') dash++; else if (e.t === 'clash') globalThis.clash = (globalThis.clash || 0) + 1; }
     if (ph === PHASE.PLAY && sim.phase === PHASE.ROUND_END) rounds++;
   }
 }
-console.log({ rounds, edge, land, fall, dash, recoveryRate: (land / edge).toFixed(2), dashesPerRound: (dash / rounds).toFixed(1) });
+console.log({ clashes: globalThis.clash, rounds, edge, land, fall, dash, recoveryRate: (land / edge).toFixed(2), dashesPerRound: (dash / rounds).toFixed(1) });

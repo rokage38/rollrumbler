@@ -36,6 +36,7 @@ export class Actors {
   onEvents(events, players, tilt) {
     for (const e of events) {
       if (e.t === 'bump') { this.fx.burst(e.x, planeY(tilt, e.x, e.z) + BALL_R, e.z, e.s, '#fff7b0'); for (const id of [e.a, e.b]) { const A = this.actors.get(id); if (A) { A.squash = 1; A.ouch = 0.35 + e.s * 0.3; } } }
+      else if (e.t === 'clash') { this.fx.burst(e.x, planeY(tilt, e.x, e.z) + BALL_R, e.z, 1, '#ffffff'); this.fx.confetti(e.x, planeY(tilt, e.x, e.z) + BALL_R, e.z, 16, 5, 6); for (const id of [e.a, e.b]) { const A = this.actors.get(id); if (A) { A.squash = 1; A.ouch = 0.7; } } }
       else if (e.t === 'fall') { const p = players.find(q => q.id === e.id); if (p) { const py = planeY(tilt, p.x, p.z); this.fx.burst(p.x, py, p.z, 0.4, '#ff6b6b'); this.fx.confetti(p.x, py + 1, p.z, 24, 4, 6); } }
       else if (e.t === 'dash') { const a = this.actors.get(e.id); if (a) a.squash = 0.7; }
       else if (e.t === 'land') { this.fx.burst(e.x, planeY(tilt, e.x, e.z), e.z, 0.3, '#b8ffd0'); const a = this.actors.get(e.id); if (a) a.squash = 1; }

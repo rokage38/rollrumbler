@@ -43,6 +43,7 @@ export class Sfx {
     this._noise(0.1, 0.25 + s * 0.3, 'bandpass', 1800, 0.8);                      // slap
     if (s > 0.6) this._noise(0.25, 0.2, 'lowpass', 600, 1, 0.01);                 // heavy hit rumble
   }
+  clash() { this._noise(0.35, 0.5, 'bandpass', 700, 1.2); this._osc('square', 160, 60, 0.35, 0.22); this._osc('triangle', 1800, 300, 0.3, 0.12); this._osc('sine', 90, 40, 0.5, 0.3, 0.02); }
   dash() { this._noise(0.28, 0.35, 'bandpass', 1200, 0.6); this._osc('sawtooth', 220, 1200, 0.22, 0.09); this._osc('sine', 500, 1600, 0.18, 0.06, 0.02); }
   fall() { this._osc('sine', 900, 140, 0.9, 0.35); this._osc('triangle', 1200, 200, 0.7, 0.12, 0.05); this._noise(0.4, 0.12, 'highpass', 2500, 1, 0.4); }
   beep(high = false) { this._osc('square', high ? 880 : 520, high ? 880 : 520, high ? 0.4 : 0.12, 0.18); if (high) this._osc('square', 1320, 1320, 0.4, 0.08); }

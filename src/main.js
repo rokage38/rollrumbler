@@ -226,6 +226,7 @@ function playEvents(events) {
   for (const e of events) {
     if (e.t === 'bump') sfx.bump(e.s);
     else if (e.t === 'dash') sfx.dash();
+    else if (e.t === 'clash') sfx.clash();
     else if (e.t === 'fall') { sfx.fall(); sfx.crowd('ooh'); }
     else if (e.t === 'edge') sfx.pop();
     else if (e.t === 'land') { sfx.bump(0.4); sfx.crowd('cheer'); }
